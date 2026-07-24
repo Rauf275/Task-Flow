@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TaskFlow — управление проектами</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+<style>
+  /* Скрываем экраны до тех пор, пока JS не определит, что показывать
+     (гостю — экран входа/регистрации, авторизованному — приложение).
+     Это убирает мигание "чужого" экрана при перезагрузке страницы. */
+  html:not(.app-ready) #auth-screen,
+  html:not(.app-ready) #app-shell{
+    visibility:hidden !important;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===================== AUTH SCREENS ===================== -->
+<div id="auth-screen" class="auth-screen">
+  <div class="auth-panel">
+    <div class="auth-brand">
+      <span class="brand-mark">TF</span>
+      <span class="brand-name">TaskFlow</span>
+    </div>
+
+    <div id="login-form-wrap" class="auth-form-wrap">
+      <h1 class="auth-title">С возвращением</h1>
+      <p class="auth-sub">Войдите, чтобы продолжить работу над проектами</p>
+      <form id="login-form" novalidate>
+        <div class="field">
+          <label for="login-email">Email</label>
+          <input type="email" id="login-email" autocomplete="username" placeholder="you@example.com">
+          <span class="field-error" data-for="login-email"></span>
+        </div>
+        <div class="field">
+          <label for="login-password">Пароль</label>
+          <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••">
+          <span class="field-error" data-for="login-password"></span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Войти</button>
+      </form>
+      <p class="auth-switch">Нет аккаунта? <button type="button" id="show-register" class="link-btn">Создать аккаунт</button></p>
+    </div>
+
+    <div id="register-form-wrap" class="auth-form-wrap hidden">
+      <h1 class="auth-title">Создать аккаунт</h1>
+      <p class="auth-sub">Начните управлять задачами за минуту</p>
+      <form id="register-form" novalidate>
+        <div class="field-row">
+          <div class="field">
+            <label for="reg-first">Имя</label>
+            <input type="text" id="reg-first" placeholder="Анна">
+            <span class="field-error" data-for="reg-first"></span>
+          </div>
+          <div class="field">
+            <label for="reg-last">Фамилия</label>
+            <input type="text" id="reg-last" placeholder="Иванова">
+            <span class="field-error" data-for="reg-last"></span>
+          </div>
+        </div>
+        <div class="field">
+          <label for="reg-email">Email</label>
+          <input type="email" id="reg-email" autocomplete="username" placeholder="you@gmail.com или you@mail.ru">
+          <span class="field-error" data-for="reg-email"></span>
+          <span style="font-size:12px;color:var(--text-faint);">Регистрация возможна только с почтой @gmail.com или @mail.ru</span>
+        </div>
+        <div class="field">
+          <label for="reg-password">Пароль</label>
+          <input type="password" id="reg-password" autocomplete="new-password" placeholder="Минимум 6 символов">
+          <span class="field-error" data-for="reg-password"></span>
+        </div>
+        <div class="field">
+          <label for="reg-password2">Повторите пароль</label>
+          <input type="password" id="reg-password2" autocomplete="new-password" placeholder="••••••••">
+          <span class="field-error" data-for="reg-password2"></span>
+        </div>
+        <button type="submit" class="btn btn-primary btn-block">Создать аккаунт</button>
+      </form>
+      <p class="auth-switch">Уже есть аккаунт? <button type="button" id="show-login" class="link-btn">Войти</button></p>
+    </div>
+  </div>
+  <div class="auth-visual" aria-hidden="true">
+    <div class="flow-lines">
+      <div class="flow-card fc1"><span class="fc-dot p-low"></span>Дизайн главной</div>
+      <div class="flow-card fc2"><span class="fc-dot p-medium"></span>API интеграция</div>
+      <div class="flow-card fc3"><span class="fc-dot p-high"></span>Правки по фидбеку</div>
+      <div class="flow-card fc4"><span class="fc-dot p-critical"></span>Хотфикс продакшена</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP SHELL ===================== -->
+<div id="app-shell" class="app-shell hidden">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+      <div class="brand-mark small">TF</div>
+      <button class="icon-btn sidebar-toggle" id="sidebar-toggle" title="Свернуть меню">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 13h8V3H3v10Zm0 8h8v-6H3v6Zm10 0h8V11h-8v10Zm0-18v6h8V3h-8Z" fill="currentColor"/></svg>
+        <span>Dashboard</span>
+      </button>
+      <button class="nav-item" data-view="projects">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z" stroke="currentColor" stroke-width="1.8" fill="none"/></svg>
+        <span>Проекты</span>
+      </button>
+      <button class="nav-item" data-view="calendar">
+        <svg viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="5" width="18" height="16" rx="2" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M3 10h18M8 3v4M16 3v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span>Календарь</span>
+      </button>
+      <button class="nav-item" data-view="favorites">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3l2.7 5.9 6.3.6-4.7 4.4 1.3 6.3L12 17l-5.6 3.2 1.3-6.3-4.7-4.4 6.3-.6L12 3Z" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>
+        <span>Избранное</span>
+      </button>
+      <button class="nav-item" data-view="archive">
+        <svg viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="4" width="18" height="5" rx="1.5" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        <span>Архив</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-projects">
+      <div class="sidebar-projects-head">
+        <span>Проекты</span>
+        <button class="icon-btn tiny" id="sidebar-new-project" title="Новый проект">+</button>
+      </div>
+      <div class="sidebar-project-list" id="sidebar-project-list"></div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <button class="nav-item" data-view="settings">
+        <svg viewBox="0 0 24 24" width="18" height="18"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.6-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" stroke="currentColor" stroke-width="1.4" fill="none"/></svg>
+        <span>Настройки</span>
+      </button>
+      <button class="user-chip" id="open-profile">
+        <img id="sidebar-avatar" class="avatar" src="" alt="">
+        <div class="user-chip-info">
+          <span id="sidebar-username" class="user-chip-name"></span>
+          <span id="sidebar-userrole" class="user-chip-role"></span>
+        </div>
+      </button>
+    </div>
+  </aside>
+
+  <main class="main-area">
+    <header class="topbar">
+      <button class="icon-btn mobile-menu-btn" id="mobile-menu-btn">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+      </button>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24" width="16" height="16"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" fill="none"/><path d="M21 21l-4.3-4.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <input type="text" id="global-search" placeholder="Поиск задач, проектов, тегов...">
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="theme-toggle" title="Сменить тему">
+          <svg id="theme-icon" viewBox="0 0 24 24" width="18" height="18"></svg>
+        </button>
+        <div class="notif-wrap">
+          <button class="icon-btn" id="notif-toggle" title="Уведомления">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M13.7 21a2 2 0 0 1-3.4 0" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+            <span class="notif-badge hidden" id="notif-badge">0</span>
+          </button>
+          <div class="notif-dropdown hidden" id="notif-dropdown">
+            <div class="notif-dropdown-head">
+              <span>Уведомления</span>
+              <button class="link-btn" id="notif-clear">Очистить</button>
+            </div>
+            <div id="notif-list" class="notif-list"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="new-task-btn">+ Задача</button>
+      </div>
+    </header>
+
+    <div class="view-scroll" id="view-scroll">
+
+      <!-- DASHBOARD -->
+      <section class="view" id="view-dashboard">
+        <div class="view-head">
+          <h1>Dashboard</h1>
+          <p class="view-sub" id="dashboard-greeting"></p>
+        </div>
+        <div class="stat-grid" id="stat-grid"></div>
+        <div class="dash-columns">
+          <div class="dash-col">
+            <div class="dash-col-head"><h2>Последние задачи</h2></div>
+            <div id="recent-tasks" class="mini-task-list"></div>
+          </div>
+          <div class="dash-col">
+            <div class="dash-col-head"><h2>Мои проекты</h2><button class="link-btn" data-view-link="projects">Все проекты →</button></div>
+            <div id="dash-projects" class="mini-project-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PROJECTS LIST -->
+      <section class="view hidden" id="view-projects">
+        <div class="view-head">
+          <h1>Проекты</h1>
+          <button class="btn btn-primary" id="new-project-btn">+ Новый проект</button>
+        </div>
+        <div class="project-grid" id="project-grid"></div>
+      </section>
+
+      <!-- PROJECT BOARD (Kanban) -->
+      <section class="view hidden" id="view-board">
+        <div class="board-head">
+          <div class="board-head-left">
+            <button class="icon-btn" id="back-to-projects">←</button>
+            <span class="project-icon-badge" id="board-project-icon"></span>
+            <h1 id="board-project-name">Проект</h1>
+            <button class="icon-btn tiny" id="board-project-fav" title="В избранное">★</button>
+          </div>
+          <div class="board-head-actions">
+            <button class="icon-btn" id="board-project-edit" title="Редактировать проект">✎</button>
+            <button class="btn btn-secondary" id="board-new-task">+ Задача</button>
+          </div>
+        </div>
+        <div class="board-toolbar">
+          <div class="filter-row" id="filter-row">
+            <select id="filter-priority" class="select-sm"><option value="">Приоритет: все</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option><option value="critical">Critical</option></select>
+            <select id="filter-assignee" class="select-sm"><option value="">Исполнитель: все</option></select>
+            <select id="filter-tag" class="select-sm"><option value="">Тег: все</option></select>
+            <select id="filter-deadline" class="select-sm"><option value="">Дедлайн: все</option><option value="overdue">Просрочено</option><option value="today">Сегодня</option><option value="week">На неделе</option></select>
+            <select id="sort-by" class="select-sm"><option value="date">Сорт.: по дате</option><option value="title">По названию</option><option value="priority">По приоритету</option><option value="deadline">По дедлайну</option><option value="status">По статусу</option></select>
+            <button class="link-btn" id="clear-filters">Сбросить</button>
+          </div>
+          <div class="bulk-bar hidden" id="bulk-bar">
+            <span id="bulk-count">0 выбрано</span>
+            <select id="bulk-status" class="select-sm"><option value="">Изменить статус...</option></select>
+            <button class="btn btn-danger btn-sm" id="bulk-delete">Удалить</button>
+            <button class="link-btn" id="bulk-cancel">Отмена</button>
+          </div>
+        </div>
+        <div class="kanban-board" id="kanban-board"></div>
+      </section>
+
+      <!-- CALENDAR -->
+      <section class="view hidden" id="view-calendar">
+        <div class="view-head">
+          <h1>Календарь</h1>
+          <div class="calendar-nav">
+            <button class="icon-btn" id="cal-prev">←</button>
+            <span id="cal-label" class="cal-label"></span>
+            <button class="icon-btn" id="cal-next">→</button>
+          </div>
+        </div>
+        <div class="calendar-grid" id="calendar-grid"></div>
+        <div class="calendar-lists">
+          <div class="cal-list-block">
+            <h2>Просроченные</h2>
+            <div id="cal-overdue" class="mini-task-list"></div>
+          </div>
+          <div class="cal-list-block">
+            <h2>Ближайшие</h2>
+            <div id="cal-upcoming" class="mini-task-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- FAVORITES -->
+      <section class="view hidden" id="view-favorites">
+        <div class="view-head"><h1>Избранное</h1></div>
+        <h2 class="sub-heading">Проекты</h2>
+        <div class="project-grid" id="fav-project-grid"></div>
+        <h2 class="sub-heading">Задачи</h2>
+        <div id="fav-task-list" class="mini-task-list"></div>
+      </section>
+
+      <!-- ARCHIVE -->
+      <section class="view hidden" id="view-archive">
+        <div class="view-head"><h1>Архив задач</h1></div>
+        <div id="archive-task-list" class="mini-task-list"></div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section class="view hidden" id="view-settings">
+        <div class="view-head"><h1>Настройки</h1></div>
+        <div class="settings-block">
+          <h2>Тема</h2>
+          <div class="theme-choice">
+            <button class="theme-opt" data-theme="light">Светлая</button>
+            <button class="theme-opt" data-theme="dark">Тёмная</button>
+          </div>
+        </div>
+        <div class="settings-block">
+          <h2>Язык</h2>
+          <select id="lang-select" class="select-sm">
+            <option value="ru">Русский</option>
+            <option value="en">English</option>
+          </select>
+        </div>
+        <div class="settings-block">
+          <h2>Данные</h2>
+          <div class="settings-actions">
+            <button class="btn btn-secondary" id="export-json">Экспорт в JSON</button>
+            <label class="btn btn-secondary file-btn">Импорт из JSON<input type="file" id="import-json" accept="application/json" hidden></label>
+          </div>
+        </div>
+        <div class="settings-block">
+          <h2>Профиль</h2>
+          <button class="btn btn-secondary" id="settings-edit-profile">Редактировать профиль</button>
+        </div>
+        <div class="settings-block">
+          <button class="btn btn-danger" id="logout-btn">Выйти из аккаунта</button>
+        </div>
+      </section>
+
+      <!-- PROFILE -->
+      <section class="view hidden" id="view-profile">
+        <div class="view-head"><h1>Профиль</h1></div>
+        <div class="profile-card">
+          <img id="profile-avatar" class="avatar big" src="" alt="">
+          <div class="profile-info">
+            <h2 id="profile-name"></h2>
+            <p id="profile-role" class="text-dim"></p>
+            <p id="profile-email" class="text-dim"></p>
+            <p id="profile-bio"></p>
+            <button class="btn btn-secondary" id="profile-edit-btn">Редактировать профиль</button>
+          </div>
+        </div>
+        <div class="stat-grid" id="profile-stat-grid"></div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- ===================== MODAL ROOT ===================== -->
+<div id="modal-root"></div>
+<div id="toast-root" class="toast-root"></div>
+<div class="sidebar-overlay hidden" id="sidebar-overlay"></div>
+
+<script>
+(function(){
+  var root = document.documentElement;
+  var authScreen = document.getElementById('auth-screen');
+  var appShell = document.getElementById('app-shell');
+  var revealed = false;
+  var settleTimer = null;
+
+  function reveal(){
+    if(revealed) return;
+    revealed = true;
+    clearTimeout(maxWaitTimer);
+    if(settleTimer) clearTimeout(settleTimer);
+    observer.disconnect();
+    root.classList.add('app-ready');
+  }
+
+  // Ждём "затишья": показываем страницу, как только логика main.js
+  // перестала переключать классы hidden (т.е. решение принято).
+  function scheduleReveal(){
+    if(settleTimer) clearTimeout(settleTimer);
+    settleTimer = setTimeout(reveal, 60);
+  }
+
+  var observer = new MutationObserver(scheduleReveal);
+  if(authScreen) observer.observe(authScreen, {attributes:true, attributeFilter:['class']});
+  if(appShell) observer.observe(appShell, {attributes:true, attributeFilter:['class']});
+
+  // Если main.js вообще не переключает классы (нечего менять) —
+  // всё равно покажем страницу вскоре после разбора DOM.
+  scheduleReveal();
+
+  // Аварийный предохранитель: не держим страницу скрытой дольше 700ms,
+  // даже если что-то пошло не так.
+  var maxWaitTimer = setTimeout(reveal, 700);
+})();
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
